@@ -1,9 +1,8 @@
 import numpy as np
 import cv2
 import glob
-import pickle  # object serializer
+import pickle
 
-# ---------------- FIND CHESSBOARD CORNERS - OBJECT POINTS AND IMAGE POINTS -------------
 
 resources_path = "resources"
 cameraMatrix = pickle.load(open(f"{resources_path}/cameraMatrix.pkl", "rb"))
@@ -18,10 +17,15 @@ def match_template(template_rgb, img, box):
 
     # Perform match operations.
     res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-    loc = np.where(res >= 0.6)
-    # print(res)
-    # loc = np.max(res)
-    return loc
+
+    _, max_val, _, max_loc = cv2.minMaxLoc(res)
+
+    return max_loc, max_val
+
+    # loc = np.where(res >= 0.6)
+    # # print(res)
+    # # loc = np.max(res)
+    # return loc
 
 
 def calibrate_cam():  # function to calibrate cameras

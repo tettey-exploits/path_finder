@@ -3,13 +3,11 @@
 
 # Import libraries
 import cv2
-import pyttsx3
-import numpy as np
-from estimate_distance import estimate_distance as dist
-from estimate_distance import calc_centroids
+from detected_objects_class import DetectedObjectClass
 import callibrate_rectify_img as rec_img
 from detect_objects import detect_objects as perform_object_detection
-import helper
+import globals
+import threading
 
 try:
     cap_principal = cv2.VideoCapture(2)
@@ -17,7 +15,7 @@ try:
 except Exception:
     raise Exception("Failed to initialize camera")
 
-img_dimensions = (640, 480)
+img_dimensions = globals.IMG_DIMENSIONS
 
 # Set and define properties
 cap_secondary.set(cv2.CAP_PROP_FRAME_WIDTH, img_dimensions[0])
@@ -32,17 +30,24 @@ with open(classFile, 'rt') as f:
     classNames = f.read().rstrip('\n').split('\n')
 
 
-def annotate_imgs(ssd_image, detection_info, distance):
-    confidence, box, classId = detection_info
-    # distance = dist(img_dimensions[0], box[0])  # box[0] represents the width of detected object
-    cv2.rectangle(ssd_image, box, color=(0, 255, 0), thickness=2)
+def annotate_imgs(ssd_image, detected_objects_list):
 
-    cv2.putText(ssd_image, distance, (600, 80),  # Indicate distance to object
-                cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 0, 255), 1)
-    cv2.putText(ssd_image, classNames[classId - 1], (box[0] + 10, box[1] + 30),
-                cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0), 1)
-    cv2.putText(ssd_image, str(round(confidence * 100, 2)), (box[0] + 10, box[1] + 70),
-                cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 255, 0), 2)
+    for detected_object in detected_objects_list:
+        distance = detected_object.detected_object_distance
+        confidence = detected_object.detected_object_conf
+        box = detected_object.detected_object_bbox
+        classId = detected_object.detected_object_name
+
+        cv2.rectangle(ssd_image, box, color=(0, 255, 0), thickness=2)
+        cv2.putText(ssd_image, distance, (600, 80),  # Indicate distance to object
+                    cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 0, 255), 1)
+        cv2.putText(ssd_image, classNames[classId - 1], (box[0] + 10, box[1] + 30),
+                    cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0), 1)
+        cv2.putText(ssd_image, str(round(confidence * 100, 2)), (box[0] + 10, box[1] + 70),
+                    cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 255, 0), 2)
+
+        print(f"Detected object is: {classNames[classId - 1]}")
+        print(f"Estimated distance to detected object is {distance}")
 
 
 if __name__ == "__main__":
@@ -54,45 +59,39 @@ if __name__ == "__main__":
             except Exception:
                 print("[ERROR] Could read from camera")
                 break
-
         else:
             print("Camera not initialized.")
             break
 
         if ret_r and ret_l:  # ensure that image capture was successful
 
-            # Transform left and right images and project
+            # Transform left and right images to lie on the same plane
             trans_img_principal, trans_img_secondary = rec_img.rectify_img(img_principal, img_secondary, img_dimensions)
-            trans_img_list = [trans_img_principal]  # , trans_img_right]
+
+            trans_img_list = [trans_img_principal]
 
             # Perform image detection on images
             detection_results = perform_object_detection(trans_img_list, confidence_threshold=0.5)
+            detected_objects_object_list = []
 
             for i in range(len(detection_results)):
                 if len(detection_results[i]) != 0:
                     x, y, w, h = detection_results[i][1]
-                    interested_object = trans_img_principal[y-10:y+h+10, x-10:x+w+10]
 
-                    loc = rec_img.match_template(interested_object, trans_img_secondary, (x, y, w, h))
+                    # Crop location of detected object and use it to find a match in the second camera
+                    interested_object = trans_img_principal[y - 10:y + h + 10, x - 10:x + w + 10]
+                    pt, _ = rec_img.match_template(interested_object, trans_img_secondary, detection_results[i][1])
 
-                    distance = "dist: "
-                    for pt in zip(*loc[::-1]):
-                        # print(f"pt {pt}")
-                        cv2.rectangle(trans_img_secondary, pt, (pt[0] + w, pt[1] + h), (0, 255, 255), 2)
+                    cv2.rectangle(trans_img_secondary, pt, (pt[0] + w, pt[1] + h), (0, 255, 255), 2)
+                    detected_objects_object_list.append(DetectedObjectClass(detection_results[i], (pt[0], pt[1], w, h)))
 
-                        disparity = calc_centroids((x, y, w, h), (pt[0], pt[1], w, h))
-                        distance = dist(disparity, img_dimensions[0])  # box[0] represents the width of detected object
+            annotate_imgs(trans_img_principal, detected_objects_object_list)  # Compute object distance
 
-                    annotate_imgs(trans_img_principal, detection_results[i], distance)  # Compute object distance
-
-            # cv2.imshow("Principal Cam", trans_img_principal)
-            # cv2.imshow("Secondary Cam", trans_img_secondary)
-
-            stacked_images = helper.stack_images(([trans_img_principal, trans_img_secondary],),  0.2)
+            stacked_images = globals.stack_images(([trans_img_principal, trans_img_secondary],), 0.2)
             cv2.imshow("Stacked Images", stacked_images)
 
             cv2.waitKey(1)
         else:
-            print("[Warning]Camera read returned False")
-    cv2.destroyAllWindows()
+            print("[Warning]Camera read Failed")
 
+    cv2.destroyAllWindows()

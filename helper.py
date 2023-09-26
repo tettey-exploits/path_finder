@@ -42,14 +42,3 @@ def stack_images(img_array, scale, labels=[]):
                 cv2.putText(ver, labels[d][c], (eachImgWidth * c + 10, eachImgHeight * d + 20),
                             cv2.FONT_HERSHEY_COMPLEX, 0.7, (255, 0, 255), 2)
     return ver
-
-    # stackedImages = stack_images(([east_lane_image, west_lane_image],
-    #                               [north_lane_image, south_lane_image]), 0.6)
-
-# arduino = serial.Serial(port='/dev/cu.usbserial-140', baudrate=9600, timeout=.1)
-#
-# def write_read(x):
-#     arduino.write(bytes(x, 'utf-8'))
-#     time.sleep(0.05)
-#     data = arduino.readline()
-#     return data

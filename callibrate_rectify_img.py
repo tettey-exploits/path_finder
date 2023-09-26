@@ -1,7 +1,7 @@
 import numpy as np
-import cv2 as cv
+import cv2
 import glob
-import pickle  # object serialiser
+import pickle  # object serializer
 
 # ---------------- FIND CHESSBOARD CORNERS - OBJECT POINTS AND IMAGE POINTS -------------
 
@@ -12,15 +12,26 @@ newCameraMatrix = pickle.load(open(f"{resources_path}/newCameraMatrix.pkl", "rb"
 roi = pickle.load(open(f"{resources_path}/roi.pkl", "rb"))
 
 
-def calibrate_cam():  # function to calibrate cameras
+def match_template(template_rgb, img, box):
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    template = cv2.cvtColor(template_rgb, cv2.COLOR_BGR2GRAY)
 
+    # Perform match operations.
+    res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+    loc = np.where(res >= 0.6)
+    # print(res)
+    # loc = np.max(res)
+    return loc
+
+
+def calibrate_cam():  # function to calibrate cameras
     global cameraMatrix, newCameraMatrix, roi, dist
 
     chessboardSize = (8, 6)
     frameSize = (640, 480)
 
     # termination criteria
-    criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
     # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
     objp = np.zeros((chessboardSize[0] * chessboardSize[1], 3), np.float32)
@@ -38,52 +49,44 @@ def calibrate_cam():  # function to calibrate cameras
 
     for image in images:
         print(image)
-        img = cv.imread(image)
-        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        img = cv2.imread(image)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # find the chess board corners
-        ret, corners = cv.findChessboardCorners(gray, chessboardSize, None)
+        ret, corners = cv2.findChessboardCorners(gray, chessboardSize, None)
 
         # if found, add object points, image points (after refining them)
         if ret:
             obj_points.append(objp)
-            corners2 = cv.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+            corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             img_points.append(corners)
 
             # Draw and display the corners
-            cv.drawChessboardCorners(img, chessboardSize, corners2, ret)
-            cv.imshow('img', img)
-            cv.waitKey(1000)
+            cv2.drawChessboardCorners(img, chessboardSize, corners2, ret)
+            cv2.imshow('img', img)
+            cv2.waitKey(1000)
 
-    ret, cameraMatrix, dist, r_vecs, t_vecs = cv.calibrateCamera(obj_points, img_points, frameSize, None, None)
-    calib_img = cv.imread(f'{folder_name}/img0.png')
+    ret, cameraMatrix, dist, r_vecs, t_vecs = cv2.calibrateCamera(obj_points, img_points, frameSize, None, None)
+    calib_img = cv2.imread(f'{folder_name}/img0.png')
     h, w = calib_img.shape[:2]  # resolve image dimensions and use in new calibration
-    newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w, h), 1, (w, h))
+    newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w, h), 1, (w, h))
 
     pickle.dump(open(f"{resources_path}/cameraMatrix.pkl", "rb"))
     pickle.dump(open(f"{resources_path}/dist.pkl", "rb"))
     pickle.dump(open(f"{resources_path}/newCameraMatrix.pkl", "rb"))
     pickle.dump(open(f"{resources_path}/roi.pkl", "rb"))
 
-    cv.destroyAllWindows()
+    cv2.destroyAllWindows()
 
 
 def rectify_img(img_left, img_right, img_dimensions: tuple):
-
-    # img_dimensions is in (h, w)
-    # Un-distort
-    # dst_left = cv.undistort(img_left, cameraMatrix, dist, None, newCameraMatrix)
-    # dst_right = cv.undistort(img_right, cameraMatrix, dist, None, newCameraMatrix)
-    #
     # # crop the image
-    x, y, w, h = roi
-    # dst_left = dst_left[y:y + h, x:x + w]
-    # dst_right = dst_right[y:y + h, x:x + w]
+    x, y, w, h = roi  # region of interest
 
     #  Un-distort with Remapping
-    map_x, map_y = cv.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w, h), 5)
-    dst_left = cv.remap(img_left, map_x, map_y, cv.INTER_LINEAR)
-    dst_right = cv.remap(img_right, map_x, map_y, cv.INTER_LINEAR)
+    map_x, map_y = cv2.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w, h), 5)
+    dst_left = cv2.remap(img_left, map_x, map_y, cv2.INTER_LINEAR)
+    dst_right = cv2.remap(img_right, map_x, map_y, cv2.INTER_LINEAR)
 
     #  crop the image
     x, y, w, h = roi
@@ -91,5 +94,3 @@ def rectify_img(img_left, img_right, img_dimensions: tuple):
     dst_right = dst_right[y:y + h, x:x + w]
 
     return dst_left, dst_right
-    # cv.imwrite('caliResult2.png', dst)
-    # cv.imwrite('caliResult1.png', dst)

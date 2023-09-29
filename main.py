@@ -83,9 +83,9 @@ def speech_module(thread_lock):
 
 if __name__ == "__main__":
 
-    # speech_engine.say("Hello, how are you feeling today?")
-    # speech_engine.say("Just ask what you want to find, and I will help you with it")
-    # speech_engine.runAndWait()
+    speech_engine.say("Hello, how are you feeling today?")
+    speech_engine.say("Just ask what you want to find, and I will help you with it")
+    speech_engine.runAndWait()
 
     lock = threading.Lock()
     speech_thread = threading.Thread(target=speech_module, args=(lock,), daemon=True)

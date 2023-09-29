@@ -21,9 +21,9 @@ class DetectedObjectClass:
                 matched_obj_bbox (tuple): A tuple containing the bounding box of the matched object.
         """
 
-        self.detected_object_name = detected_obj_properties[1]
+        self.detected_object_name = detected_obj_properties[2]
         self.detected_object_conf = detected_obj_properties[0]
-        self.detected_object_bbox = detected_obj_properties[2]
+        self.detected_object_bbox = detected_obj_properties[1]
 
         # Compute centroid of detected object and matched object
         obj_bbox = self.detected_object_bbox
@@ -34,5 +34,5 @@ class DetectedObjectClass:
 
         distance: int = round(((IMG_DIMENSIONS[0] * self._BASELINE) / (2 * self.detected_object_disparity *
                                                                        self._TAN_THETA)) + self._FOCAL_LENGTH, 2)
-        print(f"distance is: {distance} cm")
-        self.detected_object_distance = distance
+        # print(f"distance is: {distance} cm")
+        self.detected_object_distance = abs(distance)

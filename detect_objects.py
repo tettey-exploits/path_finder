@@ -9,14 +9,11 @@ import time
 message = ""
 cap = cv2.VideoCapture(0)
 
-frame_width = 480
-frame_height = 240
-
 classFile = 'resources/coco.names'
 configPath = 'resources/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
 weightPath = 'resources/frozen_inference_graph.pb'
 
-ids_interested_classes = [29, 77, 71, 44]
+ids_interested_classes = [29, 77, 71, 44, 72, 73]
 
 with open(classFile, 'rt') as f:
     classNames = f.read().rstrip('\n').split('\n')
@@ -29,22 +26,19 @@ net.setInputMean((127.5, 127.5, 127.5))
 net.setInputSwapRB(True)
 
 
-def detect_objects(img_array, confidence_threshold=0.5):
+def detect_objects(img, confidence_threshold=0.5):
     results_list = []
 
-    for img in img_array:
-        class_ids, confs, bbox = net.detect(img, confThreshold=confidence_threshold)
+    class_ids, confs, bbox = net.detect(img, confThreshold=confidence_threshold)
 
-        if len(class_ids) != 0:
-            # detected_class_interest_list is a list of ids of detected classes we are interested
-            # in as defined in ids_interested_classes and their corresponding index in class_ids
-            detected_class_interest_list = [class_oi for class_oi in enumerate(class_ids) if class_oi[1] in
-                                            ids_interested_classes]
-            if len(detected_class_interest_list) != 0:
-                for index in detected_class_interest_list:
-                    results_list.append([confs[index[0]], bbox[index[0]].flatten(), index[1]])
-            else:  # results_list must be of size 2. Add an empty list to maintain length
-                results_list.append([])
+    if len(class_ids) != 0:
+        # detected_class_interest_list is a list of ids of detected classes we are interested
+        # in as defined in ids_interested_classes and their corresponding index in class_ids
+        detected_class_interest_list = [class_oi for class_oi in enumerate(class_ids) if class_oi[1] in
+                                        ids_interested_classes]
+        if len(detected_class_interest_list) != 0:
+            for index in detected_class_interest_list:
+                results_list.append([confs[index[0]], bbox[index[0]].flatten(), index[1]])
 
     return results_list
 

@@ -6,9 +6,6 @@ import sys
 import cv2
 import time
 
-message = ""
-cap = cv2.VideoCapture(0)
-
 classFile = 'resources/coco.names'
 configPath = 'resources/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
 weightPath = 'resources/frozen_inference_graph.pb'
@@ -42,24 +39,3 @@ def detect_objects(img, confidence_threshold=0.5):
 
     return results_list
 
-
-cap_failure = 0
-
-if __name__ == "__main__":
-    while True:
-        success, frame = cap.read()  # Load frame
-
-        if success:
-            detect_objects(frame)
-            cv2.imshow("Current view", frame)
-            cap_failure = 0  # Reset failure counter
-        else:
-            message = "Could not capture frame"
-            print("[ERROR] Could not capture frame")
-
-            cap_failure = + 1  # Increment failure counter
-            if cap_failure > 5:  # If error occurs more than 5 times, close system
-                sys.exit()
-            time.sleep(1)  # Rest for a second before reattempting
-
-        cv2.waitKey(1)

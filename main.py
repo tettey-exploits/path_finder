@@ -10,6 +10,7 @@ from detect_objects import detect_objects as perform_object_detection
 import globals
 from Timer import Timer
 import threading
+import time
 
 speech_engine = pyttsx3.init()
 speech_engine.setProperty('rate', 125)  # setting up new voice rate
@@ -18,8 +19,8 @@ voices = speech_engine.getProperty('voices')  # getting details of current voice
 speech_engine.setProperty('voice', voices[15].id)  # changing index, changes voices. 1 for female
 
 try:
-    cap_principal = cv2.VideoCapture(2)
-    cap_secondary = cv2.VideoCapture(4)
+    cap_principal = cv2.VideoCapture(0)
+    cap_secondary = cv2.VideoCapture(2)
 except Exception:
     raise Exception("Failed to initialize camera")
 
@@ -72,20 +73,21 @@ def annotate_imgs(ssd_image, detected_objects_list, lock_obj):
 
 def speech_module(thread_lock):
     global text_to_read, new_text
+    
+    speech_engine.say("Hello, how are you feeling today?")
+    speech_engine.say("Just ask what you want to find, and I will help you with it")
+    speech_engine.runAndWait()
+    
     while True:
         if new_text:
             speech_engine.say(text_to_read)
             speech_engine.runAndWait()
             with thread_lock:
                 new_text = False
-                print(f"speech: {new_text}")
+                
 
 
 if __name__ == "__main__":
-
-    speech_engine.say("Hello, how are you feeling today?")
-    speech_engine.say("Just ask what you want to find, and I will help you with it")
-    speech_engine.runAndWait()
 
     lock = threading.Lock()
     speech_thread = threading.Thread(target=speech_module, args=(lock,), daemon=True)
@@ -112,14 +114,14 @@ if __name__ == "__main__":
 
             if begin_object_detection.check_timer(5):
                 # Perform image detection on images
-                detection_result = perform_object_detection(trans_img_principal, confidence_threshold=0.5)
+                detection_result = perform_object_detection(trans_img_principal, confidence_threshold=0.6)
 
                 detected_objects_object_list = []
                 for i in range(len(detection_result)):
                     x, y, w, h = detection_result[i][1]
 
                     # Crop location of detected object and use it to find a match in the second camera
-                    interested_object = trans_img_principal[y - 10:y + h + 10, x - 10:x + w + 10]
+                    interested_object = trans_img_principal[y:y + h, x:x + w]
                     pt, _ = rec_img.match_template(interested_object, trans_img_secondary, detection_result[i][1])
 
                     cv2.rectangle(trans_img_secondary, pt, (pt[0] + w, pt[1] + h), (0, 255, 255), 2)
@@ -127,7 +129,7 @@ if __name__ == "__main__":
 
                 annotate_imgs(trans_img_principal, detected_objects_object_list, lock)  # Compute object distance
 
-            stacked_images = globals.stack_images(([trans_img_principal, trans_img_secondary],), 0.2)
+            stacked_images = globals.stack_images(([trans_img_principal, trans_img_secondary],), 0.8)
             cv2.imshow("Stacked Images", stacked_images)
 
             cv2.waitKey(1)

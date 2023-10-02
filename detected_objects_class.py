@@ -4,7 +4,7 @@ from globals import IMG_DIMENSIONS
 class DetectedObjectClass:
     _TAN_THETA = 0.38559092585596155
     _FOCAL_LENGTH = -0.5466257668711592
-    _BASELINE = 21  # in centimeters
+    _BASELINE = 3.0  # in centimeters
 
     detected_object_name: str
     detected_object_disparity: float

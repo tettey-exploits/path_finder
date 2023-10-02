@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from enum import Enum
 
-IMG_DIMENSIONS = (640, 480)
+IMG_DIMENSIONS = (360, 240)
 
 
 def stack_images(img_array, scale, labels=[]):
